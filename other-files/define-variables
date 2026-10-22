@@ -1,0 +1,9 @@
+#!/bin/bash
+
+export XDG_CONFIG_HOME="$SNAP_USER_COMMON/.config"
+export XDG_DATA_HOME="$SNAP_USER_COMMON/.local/share"
+
+mkdir -p "$XDG_CONFIG_HOME"
+mkdir -p "$XDG_DATA_HOME"
+
+exec "$@"

@@ -1,0 +1,106 @@
+name: winehq-stable
+base: core26
+adopt-info: winehq-stable
+platforms:
+  amd64:
+    build-on: [amd64]
+    build-for: [amd64]
+summary: A Snap with winehq-stable
+description: |
+ A content Snap with winehq-stable
+grade: stable
+confinement: strict
+compression: lzo
+
+slots:
+  winehq-stable:
+    interface: content
+    read:
+      - /
+
+apps:
+  winehq-stable:
+    command-chain: [snap/command-chain/define-variables]
+    command: usr/bin/wine
+    desktop: winehq-stable.desktop
+    common-id: org.winehq.Wine
+    extensions: [gnome]
+    environment:
+      HOME: $SNAP_USER_COMMON
+    plugs:
+      - audio-playback
+      - network
+      - network-bind
+      - screen-inhibit-control
+      - home
+      - removable-media
+      - mount-observe
+      - joystick
+      - bluez
+      - udisks2
+      - system-observe
+      - hardware-observe
+      - upower-observe
+
+plugs:
+  shared-memory:
+    private: true
+
+layout:
+  /usr/lib/x86_64-linux-gnu/alsa-lib:
+    symlink: $SNAP/usr/lib/x86_64-linux-gnu/alsa-lib
+  /usr/lib/mangohud:
+    symlink: $SNAP/usr/lib/mangohud
+
+package-repositories:
+  - type: apt
+    url: https://dl.winehq.org/wine-builds/ubuntu
+    suites: [resolute]
+    components: [main]
+    architectures: [amd64]
+    key-id: D43F640145369C51D786DDEA76F1A20FF987672F
+
+parts:
+  winehq-stable:
+    plugin: nil
+    stage-packages:
+      - winehq-stable
+      - x11-xserver-utils
+      - libgstreamer1.0-0
+      - libgstreamer-gl1.0-0
+      - gstreamer1.0-plugins-base
+      - libgstreamer-plugins-base1.0-0
+      - gstreamer1.0-plugins-good
+      - gstreamer1.0-plugins-bad
+      - libgstreamer-plugins-bad1.0-0
+      - gstreamer1.0-plugins-ugly
+      - gstreamer1.0-libav
+      - gstreamer1.0-vaapi
+      - gstreamer1.0-alsa
+      - gstreamer1.0-gl
+      - gstreamer1.0-x
+      - gstreamer1.0-plugins-rtp
+      - gstreamer1.0-tools
+      - libsdl2-2.0-0
+      - libdecor-0-0
+    override-build: |
+      craftctl default
+      # Set the snap version from the .deb package version
+      craftctl set version=$(dpkg-parsechangelog -l $CRAFT_PART_INSTALL/usr/share/doc/winehq-stable/changelog.*.gz -S Version | sed -e s/1://g)
+      touch $CRAFT_PART_INSTALL/winehq-stable.desktop
+      desktop-file-edit \
+        --set-key="Type"          --set-value="Application" \
+        --set-key="Name"          --set-value="WineHQ stable" \
+        --set-key="Exec"          --set-value="wine start /unix %f" \
+        --set-key="MimeType"      --set-value="application/x-ms-dos-executable;application/x-msi;application/x-ms-shortcut;application/x-bat;application/x-mswinurl" \
+        --set-key="Icon"          --set-value="wine" \
+        --set-key="NoDisplay"     --set-value="true" \
+        --set-key="StartupNotify" --set-value="true" \
+        $CRAFT_PART_INSTALL/winehq-stable.desktop
+
+  other-files:
+    after: [winehq-stable]
+    plugin: dump
+    source: ./other-files
+    organize:
+      define-variables: snap/command-chain/define-variables
