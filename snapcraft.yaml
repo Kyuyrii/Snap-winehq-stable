@@ -49,8 +49,6 @@ plugs:
 layout:
   /usr/lib/x86_64-linux-gnu/alsa-lib:
     symlink: $SNAP/usr/lib/x86_64-linux-gnu/alsa-lib
-  /usr/lib/mangohud:
-    symlink: $SNAP/usr/lib/mangohud
 
 package-repositories:
   - type: apt
