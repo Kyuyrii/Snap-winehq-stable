@@ -338,7 +338,7 @@ create_shortcut() {
     local app_name="${base%.*}"
     local exec_dir desktop_dir dotfile
     exec_dir=$(dirname "$exec_file")
-    desktop_dir=$(get_desktop_dir)
+    desktop_dir="$DOT_DESKTOP_DIR"
 
     # Auto-detect the prefix by walking up from the .exe.
     local found_prefix="" candidate
@@ -368,7 +368,6 @@ create_shortcut() {
         cat_list=$(build_cb_list "$f_category" "${XDG_CATEGORIES[@]}")
 
         # Build the locale list with the current value as default.
-        # The "Indefinite" option is represented by an empty string internally.
         local locale_current_display="$f_locale"
         if [ -z "$locale_current_display" ]; then
             locale_current_display="$(msg locale_indefinite)"
@@ -423,11 +422,10 @@ create_shortcut() {
             continue
         fi
 
-        # Valid: break out of the loop.
         break
     done
 
-    # Final prefix: user choice wins; fall back to auto-detected.
+    # Final prefix.
     local final_prefix="$f_prefix"
     if [ -z "$final_prefix" ]; then
         final_prefix="$found_prefix"
@@ -482,6 +480,21 @@ EOF
 }
 
 # ---------- Entry point ----------
+
+# Decide where to write the .desktop file.
+# If inside a Snap:
+#   - if the "home" interface is connected, use the real Desktop
+#   - otherwise, fall back to $SNAP_USER_COMMON/Desktop (writable in sandbox)
+if [ -n "$SNAP" ]; then
+    if snapctl is-connected home 2>/dev/null; then
+        DOT_DESKTOP_DIR="$(get_desktop_dir)"
+    else
+        DOT_DESKTOP_DIR="$SNAP_USER_COMMON/Desktop"
+        mkdir -p "$DOT_DESKTOP_DIR"
+    fi
+else
+    DOT_DESKTOP_DIR="$(get_desktop_dir)"
+fi
 
 if [ -n "$1" ]; then
     create_shortcut "$1"

@@ -43,12 +43,11 @@ apps:
       - hardware-observe
       - upower-observe
   wddc:
-    command-chain: [define-variables]
     command: usr/bin/wddc
     desktop: wddc.desktop
     extensions: [gnome]
     environment:
-      HOME: $SNAP_USER_COMMON
+      HOME: $SNAP_USER_DATA
     plugs: *plugs
 
 plugs:
@@ -97,13 +96,13 @@ parts:
       # Set the snap version from the .deb package version
       craftctl set version=$(dpkg-parsechangelog -l $CRAFT_PART_INSTALL/usr/share/doc/winehq-stable/changelog.*.gz -S Version | sed -e s/1://g)
 
-  yad:
+  wddc-dependencies:
     after: [winehq-stable]
     plugin: nil
-    stage-packages: [yad]
+    stage-packages: [yad, icoutils]
 
   other-files:
-    after: [yad]
+    after: [wddc-dependencies]
     plugin: dump
     source: ./other-files
     organize:
