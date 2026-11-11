@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Exec=wddc %f
+MimeType=application/x-ms-dos-executable;application/x-msi
+Icon=wine-logo
+NoDisplay=true
+StartupNotify=true
+Name=Create .desktop (WineHQ stable)
+Name[pt]=Criar .desktop (WineHQ stable)
+Name[es]=Crear .desktop (WineHQ stable)

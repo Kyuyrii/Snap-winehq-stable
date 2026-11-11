@@ -11,16 +11,13 @@ description: |
 grade: stable
 confinement: strict
 compression: lzo
+icon: wine-logo.svg
 
 slots:
   winehq-stable:
     interface: content
     read:
       - /
-  little-wine-launcher:
-    interface: dbus
-    bus: session
-    name: io.github.kyuyrii.little-wine-launcher
 
 apps:
   winehq-stable:
@@ -45,15 +42,13 @@ apps:
       - system-observe
       - hardware-observe
       - upower-observe
-  little-wine-launcher:
+  wddc:
     command-chain: [define-variables]
-    command: usr/bin/little-wine-launcher
-    desktop: usr/share/applications/io.github.kyuyrii.little-wine-launcher.desktop
-    common-id: io.github.kyuyrii.little-wine-launcher
+    command: usr/bin/wddc
+    desktop: wddc.desktop
     extensions: [gnome]
     environment:
       HOME: $SNAP_USER_COMMON
-      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
     plugs: *plugs
 
 plugs:
@@ -102,21 +97,15 @@ parts:
       # Set the snap version from the .deb package version
       craftctl set version=$(dpkg-parsechangelog -l $CRAFT_PART_INSTALL/usr/share/doc/winehq-stable/changelog.*.gz -S Version | sed -e s/1://g)
 
-  little-wine-launcher:
+  yad:
     after: [winehq-stable]
-    plugin: make
-    source: https://github.com/Kyuyrii/Little-Wine-Launcher.git
-#    source-tag: 0.3
-    stage-packages: [python3-tomlkit, icoutils]
-    make-parameters:
-      - PREFIX=/usr
-    override-build: |
-      craftctl default
-      sed -i 's|Icon=io.github.kyuyrii.little-wine-launcher|Icon=${SNAP}/usr/share/icons/hicolor/scalable/apps/io.github.kyuyrii.little-wine-launcher.svg|' $CRAFT_PART_INSTALL/usr/share/applications/io.github.kyuyrii.little-wine-launcher.desktop
+    plugin: nil
+    stage-packages: [yad]
 
   other-files:
-    after: [little-wine-launcher]
+    after: [yad]
     plugin: dump
     source: ./other-files
     organize:
       wine-logo.svg: usr/share/icons/hicolor/scalable/apps/wine-logo.svg
+      wddc: usr/bin/wddc
