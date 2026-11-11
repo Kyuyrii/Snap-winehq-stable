@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=WineHQ stable
+Exec=winehq-stable start /unix %f
+MimeType=application/x-ms-dos-executable;application/x-msi;application/x-ms-shortcut;application/x-bat;application/x-mswinurl
+Icon=wine-logo
+NoDisplay=true
+StartupNotify=true
+

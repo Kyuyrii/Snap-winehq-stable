@@ -11,24 +11,27 @@ description: |
 grade: stable
 confinement: strict
 compression: lzo
-icon: wine-logo.svg
 
 slots:
   winehq-stable:
     interface: content
     read:
       - /
+  little-wine-launcher:
+    interface: dbus
+    bus: session
+    name: io.github.kyuyrii.little-wine-launcher
 
 apps:
   winehq-stable:
-    command-chain: [snap/command-chain/define-variables]
+    command-chain: [define-variables]
     command: usr/bin/wine
     desktop: winehq-stable.desktop
     common-id: org.winehq.Wine
     extensions: [gnome]
     environment:
       HOME: $SNAP_USER_COMMON
-    plugs:
+    plugs: &plugs
       - audio-playback
       - network
       - network-bind
@@ -42,6 +45,16 @@ apps:
       - system-observe
       - hardware-observe
       - upower-observe
+  little-wine-launcher:
+    command-chain: [define-variables]
+    command: usr/bin/little-wine-launcher
+    desktop: usr/share/applications/io.github.kyuyrii.little-wine-launcher.desktop
+    common-id: io.github.kyuyrii.little-wine-launcher
+    extensions: [gnome]
+    environment:
+      HOME: $SNAP_USER_COMMON
+      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$PYTHONPATH
+    plugs: *plugs
 
 plugs:
   shared-memory:
@@ -50,6 +63,8 @@ plugs:
 layout:
   /usr/lib/x86_64-linux-gnu/alsa-lib:
     symlink: $SNAP/usr/lib/x86_64-linux-gnu/alsa-lib
+  /usr/share/alsa:
+    symlink: $SNAP/usr/share/alsa
 
 package-repositories:
   - type: apt
@@ -86,20 +101,22 @@ parts:
       craftctl default
       # Set the snap version from the .deb package version
       craftctl set version=$(dpkg-parsechangelog -l $CRAFT_PART_INSTALL/usr/share/doc/winehq-stable/changelog.*.gz -S Version | sed -e s/1://g)
-      touch $CRAFT_PART_INSTALL/winehq-stable.desktop
-      desktop-file-edit \
-        --set-key="Type"          --set-value="Application" \
-        --set-key="Name"          --set-value="WineHQ stable" \
-        --set-key="Exec"          --set-value="wine start /unix %f" \
-        --set-key="MimeType"      --set-value="application/x-ms-dos-executable;application/x-msi;application/x-ms-shortcut;application/x-bat;application/x-mswinurl" \
-        --set-key="Icon"          --set-value="wine" \
-        --set-key="NoDisplay"     --set-value="true" \
-        --set-key="StartupNotify" --set-value="true" \
-        $CRAFT_PART_INSTALL/winehq-stable.desktop
+
+  little-wine-launcher:
+    after: [winehq-stable]
+    plugin: make
+    source: https://github.com/Kyuyrii/Little-Wine-Launcher.git
+#    source-tag: 0.3
+    stage-packages: [python3-tomlkit, icoutils]
+    make-parameters:
+      - PREFIX=/usr
+    override-build: |
+      craftctl default
+      sed -i 's|Icon=io.github.kyuyrii.little-wine-launcher|Icon=${SNAP}/usr/share/icons/hicolor/scalable/apps/io.github.kyuyrii.little-wine-launcher.svg|' $CRAFT_PART_INSTALL/usr/share/applications/io.github.kyuyrii.little-wine-launcher.desktop
 
   other-files:
-    after: [winehq-stable]
+    after: [little-wine-launcher]
     plugin: dump
     source: ./other-files
     organize:
-      define-variables: snap/command-chain/define-variables
+      wine-logo.svg: usr/share/icons/hicolor/scalable/apps/wine-logo.svg
