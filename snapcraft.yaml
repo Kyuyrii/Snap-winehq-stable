@@ -89,6 +89,8 @@ parts:
       - gstreamer1.0-plugins-rtp
       - gstreamer1.0-tools
       - libsdl2-classic
+      - libsdl2-2.0-0
+      - libdecor-0-0
       - libsdl3-0
     override-build: |
       craftctl default
