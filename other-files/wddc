@@ -3,6 +3,8 @@
 
 APP_TITLE="Wine Dot Desktop Creator"
 
+WINE_FALLBACK_ICON="/snap/winehq-stable/current/meta/gui/icon.png"
+
 XDG_CATEGORIES=(
     "Audio" "AudioVideo" "Development" "Education" "Game"
     "Graphics" "Network" "Office" "Science" "Settings"
@@ -50,8 +52,6 @@ dlg_select_exec() {
         --file-filter="All files | *" 2>/dev/null
 }
 
-# Fallback icon picker: shows the warning message AND the FL button
-# in the same window, mirroring the main form's look.
 dlg_pick_icon_with_warning() {
     local title="$1" warning="$2"
     local out
@@ -150,6 +150,14 @@ get_desktop_dir() {
     echo "$desktop"
 }
 
+get_default_wine_prefix() {
+    if [ -n "$SNAP_USER_COMMON" ]; then
+        echo "$SNAP_USER_COMMON/.wine"
+    else
+        echo "$HOME/.wine"
+    fi
+}
+
 get_largest_icon_size() {
     local ico_file="$1" max_size=0 size
     while IFS= read -r line; do
@@ -217,8 +225,6 @@ extract_ico_icon() {
     return $rc
 }
 
-# Builds a CB list with the given item marked as default (^).
-# Args: current_value, items...
 build_cb_list() {
     local current="$1"; shift
     local out=""
@@ -234,13 +240,12 @@ build_cb_list() {
     printf '%s\n' "$out"
 }
 
-# Resolves the final Icon= path. Prints the path (or "wine").
 resolve_icon_choice() {
     local user_icon="$1" exe_file="$2" lc_ext="$3" safe_name="$4" exec_dir="$5"
 
     if [ -n "$user_icon" ]; then
         if [ ! -f "$user_icon" ]; then
-            echo "wine"
+            echo "$WINE_FALLBACK_ICON"
             return
         fi
         local ubase uext lc_uext uparent
@@ -265,13 +270,12 @@ resolve_icon_choice() {
                 echo "$user_icon"
                 ;;
             *)
-                echo "wine"
+                echo "$WINE_FALLBACK_ICON"
                 ;;
         esac
         return
     fi
 
-    # No user icon: try automatic extraction from .exe.
     if [ "$lc_ext" = "exe" ]; then
         local exe_out="$exec_dir/wddc-icon-${safe_name}.png"
         if extract_exe_icon "$exe_file" "$exe_out"; then
@@ -280,15 +284,13 @@ resolve_icon_choice() {
         fi
     fi
 
-    # Extraction failed (or .msi): single-window picker with warning + FL.
     local picked
     picked=$(dlg_pick_icon_with_warning "$(msg icon_title)" "$(msg icon_extract_failed)")
     if [ -z "$picked" ] || [ ! -f "$picked" ]; then
-        echo "wine"
+        echo "$WINE_FALLBACK_ICON"
         return
     fi
 
-    # Handle the picked file (no further picker on failure).
     local pbase pext lc_pext pparent
     pbase=$(basename "$picked")
     pext="${pbase##*.}"
@@ -311,7 +313,7 @@ resolve_icon_choice() {
             echo "$picked"
             ;;
         *)
-            echo "wine"
+            echo "$WINE_FALLBACK_ICON"
             ;;
     esac
 }
@@ -340,7 +342,6 @@ create_shortcut() {
     exec_dir=$(dirname "$exec_file")
     desktop_dir="$DOT_DESKTOP_DIR"
 
-    # Auto-detect the prefix by walking up from the .exe.
     local found_prefix="" candidate
     candidate="$exec_dir"
     while [ "$candidate" != "/" ] && [ "$candidate" != "." ]; do
@@ -351,23 +352,24 @@ create_shortcut() {
         candidate=$(dirname "$candidate")
     done
 
-    # Values carried across re-openings of the form.
+    if [ -z "$found_prefix" ]; then
+        found_prefix="$(get_default_wine_prefix)"
+        mkdir -p "$found_prefix" 2>/dev/null
+    fi
+
     local f_name="$app_name"
     local f_prefix="$found_prefix"
     local f_icon=""
     local f_locale=""
     local f_category="Audio"
 
-    # Locale combo list: "Indefinite" + available locales.
     local locale_items=("$(msg locale_indefinite)")
     locale_items+=("${WINE_LOCALES[@]}")
 
     while true; do
-        # Build the category list with the current value as default.
         local cat_list
         cat_list=$(build_cb_list "$f_category" "${XDG_CATEGORIES[@]}")
 
-        # Build the locale list with the current value as default.
         local locale_current_display="$f_locale"
         if [ -z "$locale_current_display" ]; then
             locale_current_display="$(msg locale_indefinite)"
@@ -391,7 +393,6 @@ create_shortcut() {
         local rc=$?
         [ "$rc" -ne 0 ] && exit 0
 
-        # Parse.
         local p_exec p_name p_prefix p_icon p_locale p_category
         p_exec=$(printf '%s\n' "$form_out" | sed -n '1p')
         p_name=$(printf '%s\n' "$form_out" | sed -n '2p')
@@ -400,12 +401,10 @@ create_shortcut() {
         p_locale=$(printf '%s\n' "$form_out" | sed -n '5p')
         p_category=$(printf '%s\n' "$form_out" | sed -n '6p')
 
-        # Convert "Indefinite" back to empty.
         if [ "$p_locale" = "$(msg locale_indefinite)" ]; then
             p_locale=""
         fi
 
-        # Carry values forward in case we need to re-open.
         f_name="$p_name"
         f_prefix="$p_prefix"
         f_icon="$p_icon"
@@ -417,32 +416,23 @@ create_shortcut() {
             continue
         fi
 
-        if [ -z "$p_prefix" ] && [ -z "$found_prefix" ]; then
-            dlg_error "$APP_TITLE" "$(msg prefix_required)"
-            continue
-        fi
-
         break
     done
 
-    # Final prefix.
     local final_prefix="$f_prefix"
     if [ -z "$final_prefix" ]; then
         final_prefix="$found_prefix"
     fi
 
-    # Recompute safe_name from the final name.
     local final_safe
     final_safe=$(echo "$f_name" | tr ' ' '_' | tr '[:upper:]' '[:lower:]' \
                  | sed 's/[^a-zA-Z0-9_-]/_/g')
     dotfile="$desktop_dir/wddc-$final_safe.desktop"
 
-    # Resolve icon.
     local icon_path
     icon_path=$(resolve_icon_choice "$f_icon" "$exec_file" "$lc_ext" "$final_safe" "$exec_dir")
-    [ -z "$icon_path" ] && icon_path="wine"
+    [ -z "$icon_path" ] && icon_path="$WINE_FALLBACK_ICON"
 
-    # Build the env part of the Exec line.
     local env_parts=""
     if [ -n "$final_prefix" ]; then
         env_parts+="WINEPREFIX=\"$final_prefix\" "
@@ -451,7 +441,6 @@ create_shortcut() {
         env_parts+="LC_ALL=$f_locale LANG=$f_locale LANGUAGE=$f_locale "
     fi
 
-    # Build Exec line.
     local exec_line
     if [ -n "$env_parts" ]; then
         exec_line="env ${env_parts}snap run winehq-stable \"$exec_file\""
@@ -462,7 +451,6 @@ create_shortcut() {
     local exec_basename
     exec_basename=$(basename "$exec_file")
 
-    # Write .desktop.
     cat > "$dotfile" << EOF
 [Desktop Entry]
 Name=$f_name
@@ -481,10 +469,6 @@ EOF
 
 # ---------- Entry point ----------
 
-# Decide where to write the .desktop file.
-# If inside a Snap:
-#   - if the "home" interface is connected, use the real Desktop
-#   - otherwise, fall back to $SNAP_USER_COMMON/Desktop (writable in sandbox)
 if [ -n "$SNAP" ]; then
     if snapctl is-connected home 2>/dev/null; then
         DOT_DESKTOP_DIR="$(get_desktop_dir)"
