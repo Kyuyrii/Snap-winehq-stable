@@ -11,7 +11,7 @@ XDG_CATEGORIES=(
     "System" "Utility" "Video"
 )
 
-WINE_LOCALES=(
+WDDC_LOCALES=(
     "ar_SA.UTF-8" "bg_BG.UTF-8" "cs_CZ.UTF-8" "da_DK.UTF-8"
     "de_DE.UTF-8" "el_GR.UTF-8" "en_US.UTF-8" "es_ES.UTF-8"
     "es_MX.UTF-8" "fa_IR.UTF-8" "fi_FI.UTF-8" "fr_FR.UTF-8"
@@ -364,7 +364,7 @@ create_shortcut() {
     local f_category="Audio"
 
     local locale_items=("$(msg locale_indefinite)")
-    locale_items+=("${WINE_LOCALES[@]}")
+    locale_items+=("${WDDC_LOCALES[@]}")
 
     while true; do
         local cat_list
