@@ -3,7 +3,7 @@
 
 APP_TITLE="Wine Dot Desktop Creator"
 
-WINE_FALLBACK_ICON="/snap/winehq-stable/current/meta/gui/icon.png"
+WINE_FALLBACK_ICON="/snap/winehq-stable/current/meta/gui/icon.svg"
 
 XDG_CATEGORIES=(
     "Audio" "AudioVideo" "Development" "Education" "Game"
@@ -25,17 +25,17 @@ WDDC_LOCALES=(
 # ---------- Dependency check ----------
 
 if ! command -v yad >/dev/null 2>&1; then
-    echo "[wddc]: yad is required but was not found in PATH." >&2
-    echo "[wddc]: install it (e.g. 'sudo apt install yad' / 'sudo dnf install yad')." >&2
+    echo "[wddc]: 'yad' command not found" >&2
     exit 1
 fi
 
 HAVE_ICOUTILS=1
-if ! command -v wrestool >/dev/null 2>&1 || ! command -v icotool >/dev/null 2>&1; then
+if ! command -v wrestool >/dev/null 2>&1; then
     HAVE_ICOUTILS=0
-    yad --warning --title="$APP_TITLE" \
-        --text="'icoutils' (wrestool/icotool) was not found.\n\nAutomatic icon extraction from .exe and .ico files will be disabled; the icon will fall back to 'wine' (or to the .ico file itself if you pick one).\n\nInstall it (e.g. 'sudo apt install icoutils' / 'sudo dnf install icoutils') to enable icon extraction." \
-        2>/dev/null
+    echo "[wddc]: 'wrestool' command not found" >&2
+elif ! command -v icotool >/dev/null 2>&1; then
+    HAVE_ICOUTILS=0
+    echo "[wddc]: 'icotool' command not found" >&2
 fi
 
 # ---------- Dialog helpers ----------
@@ -58,10 +58,9 @@ dlg_pick_icon_with_warning() {
     out=$(yad --form --title="$title" \
         --text="$warning" \
         --separator=$'\n' \
-        --field="$(msg field_icon):FL" "" \
+        --field=":FL" "" \
         --file-filter="Images | *.png *.jpg *.jpeg *.ico *.svg" \
-        --button="$(msg cancel):1" \
-        --button="$(msg confirm):0" \
+        --button="$(msg create):0" \
         2>/dev/null)
     local rc=$?
     [ "$rc" -ne 0 ] && return 1
@@ -82,58 +81,43 @@ msg() {
     local k="$1"
     case "${LANG_CODE}_${k}" in
         # English
-        en_select_exec_title)   echo "Select Windows executable" ;;
-        en_create_title)        echo "New Shortcut" ;;
+        en_create)              echo "Create" ;;
+        en_field_category)      echo "XDG category" ;;
         en_field_exec)          echo "Executable" ;;
-        en_field_name)          echo "Shortcut name" ;;
-        en_field_prefix)        echo "Wine prefix" ;;
-        en_field_icon)          echo "Icon (optional)" ;;
+        en_field_icon)          echo "Icon" ;;
         en_field_locale)        echo "Locale" ;;
-        en_field_category)      echo "Category" ;;
+        en_field_name)          echo "Name" ;;
+        en_field_prefix)        echo "Wineprefix" ;;
+        en_icon_extract_failed) echo "Icon extraction failed.\n\nSelect an image to use as the icon." ;;
+        en_invalid_file)        echo "Invalid file, check the path used." ;;
         en_locale_indefinite)   echo "Indefinite" ;;
-        en_confirm)             echo "Confirm" ;;
-        en_cancel)              echo "Cancel" ;;
-        en_name_required)       echo "The shortcut name cannot be empty." ;;
-        en_prefix_required)     echo "Please select a Wine prefix folder." ;;
-        en_invalid_file)        echo "File not found or invalid extension (only .exe and .msi are supported)." ;;
-        en_icon_extract_failed) echo "Could not extract an icon from the executable.\n\nPlease select an icon file." ;;
-        en_icon_title)          echo "Select Icon File" ;;
+        en_select_exec_title)   echo "Select an executable" ;;
 
         # Portuguese
-        pt_select_exec_title)   echo "Selecionar executável do Windows" ;;
-        pt_create_title)        echo "Novo Atalho" ;;
+        pt_create)              echo "Criar" ;;
+        pt_field_category)      echo "Categoria XDG" ;;
         pt_field_exec)          echo "Executável" ;;
-        pt_field_name)          echo "Nome do atalho" ;;
-        pt_field_prefix)        echo "Prefixo Wine" ;;
-        pt_field_icon)          echo "Ícone (opcional)" ;;
+        pt_field_icon)          echo "Ícone" ;;
         pt_field_locale)        echo "Localidade" ;;
-        pt_field_category)      echo "Categoria" ;;
+        pt_field_name)          echo "Nome" ;;
+        pt_field_prefix)        echo "Wineprefix" ;;
+        pt_icon_extract_failed) echo "Extração de ícone falhou.\n\nSelecione uma imagem para ser o ícone" ;;
+        pt_invalid_file)        echo "Arquivo inválido, verifique o caminho usado." ;;
         pt_locale_indefinite)   echo "Indefinido" ;;
-        pt_confirm)             echo "Confirmar" ;;
-        pt_cancel)              echo "Cancelar" ;;
-        pt_name_required)       echo "O nome do atalho não pode ficar vazio." ;;
-        pt_prefix_required)     echo "Por favor, selecione uma pasta de prefixo Wine." ;;
-        pt_invalid_file)        echo "Arquivo não encontrado ou extensão inválida (apenas .exe e .msi são suportados)." ;;
-        pt_icon_extract_failed) echo "Não foi possível extrair um ícone do executável.\n\nPor favor, selecione um arquivo de ícone." ;;
-        pt_icon_title)          echo "Selecionar Arquivo de Ícone" ;;
+        pt_select_exec_title)   echo "Selecione um executável" ;;
 
         # Spanish
-        es_select_exec_title)   echo "Seleccionar ejecutable de Windows" ;;
-        es_create_title)        echo "Nuevo Acceso" ;;
+        es_create)              echo "Crear" ;;
+        es_field_category)      echo "Categoría XDG" ;;
         es_field_exec)          echo "Ejecutable" ;;
-        es_field_name)          echo "Nombre del acceso" ;;
-        es_field_prefix)        echo "Prefijo Wine" ;;
-        es_field_icon)          echo "Icono (opcional)" ;;
+        es_field_icon)          echo "Icono" ;;
         es_field_locale)        echo "Localidad" ;;
-        es_field_category)      echo "Categoría" ;;
+        es_field_name)          echo "Nombre" ;;
+        es_field_prefix)        echo "Wineprefix" ;;
+        es_icon_extract_failed) echo "La extracción del icono falló.\n\nSeleccione una imagen para usar como icono." ;;
+        es_invalid_file)        echo "Archivo inválido, verifique la ruta utilizada." ;;
         es_locale_indefinite)   echo "Indefinido" ;;
-        es_confirm)             echo "Confirmar" ;;
-        es_cancel)              echo "Cancelar" ;;
-        es_name_required)       echo "El nombre del acceso no puede estar vacío." ;;
-        es_prefix_required)     echo "Por favor, seleccione una carpeta de prefijo Wine." ;;
-        es_invalid_file)        echo "Archivo no encontrado o extensión inválida (solo .exe y .msi son soportados)." ;;
-        es_icon_extract_failed) echo "No se pudo extraer un icono del ejecutable.\n\nPor favor, seleccione un archivo de icono." ;;
-        es_icon_title)          echo "Seleccionar Archivo de Icono" ;;
+        es_select_exec_title)   echo "Seleccionar un ejecutable" ;;
     esac
 }
 
@@ -285,7 +269,7 @@ resolve_icon_choice() {
     fi
 
     local picked
-    picked=$(dlg_pick_icon_with_warning "$(msg icon_title)" "$(msg icon_extract_failed)")
+    picked=$(dlg_pick_icon_with_warning "$APP_TITLE" "$(msg icon_extract_failed)")
     if [ -z "$picked" ] || [ ! -f "$picked" ]; then
         echo "$WINE_FALLBACK_ICON"
         return
@@ -366,58 +350,51 @@ create_shortcut() {
     local locale_items=("$(msg locale_indefinite)")
     locale_items+=("${WDDC_LOCALES[@]}")
 
-    while true; do
-        local cat_list
-        cat_list=$(build_cb_list "$f_category" "${XDG_CATEGORIES[@]}")
+    local cat_list
+    cat_list=$(build_cb_list "$f_category" "${XDG_CATEGORIES[@]}")
 
-        local locale_current_display="$f_locale"
-        if [ -z "$locale_current_display" ]; then
-            locale_current_display="$(msg locale_indefinite)"
-        fi
-        local locale_list
-        locale_list=$(build_cb_list "$locale_current_display" "${locale_items[@]}")
+    local locale_current_display="$f_locale"
+    if [ -z "$locale_current_display" ]; then
+        locale_current_display="$(msg locale_indefinite)"
+    fi
+    local locale_list
+    locale_list=$(build_cb_list "$locale_current_display" "${locale_items[@]}")
 
-        local form_out
-        form_out=$(yad --form --title="$(msg create_title)" \
-            --separator=$'\n' \
-            --field="$(msg field_exec):RO" "$exec_file" \
-            --field="$(msg field_name)" "$f_name" \
-            --field="$(msg field_prefix):DIR" "$f_prefix" \
-            --field="$(msg field_icon):FL" "$f_icon" \
-            --field="$(msg field_locale):CB" "$locale_list" \
-            --field="$(msg field_category):CB" "$cat_list" \
-            --file-filter="Images | *.png *.jpg *.jpeg *.ico *.svg" \
-            --button="$(msg cancel):1" \
-            --button="$(msg confirm):0" \
-            2>/dev/null)
-        local rc=$?
-        [ "$rc" -ne 0 ] && exit 0
+    local form_out
+    form_out=$(yad --form --title="$APP_TITLE" \
+        --separator=$'\n' \
+        --field="$(msg field_exec):RO" "$exec_file" \
+        --field="$(msg field_name)" "$f_name" \
+        --field="$(msg field_prefix):DIR" "$f_prefix" \
+        --field="$(msg field_icon):FL" "$f_icon" \
+        --field="$(msg field_locale):CB" "$locale_list" \
+        --field="$(msg field_category):CB" "$cat_list" \
+        --file-filter="Images | *.png *.jpg *.jpeg *.ico *.svg" \
+        --button="$(msg create):0" \
+        2>/dev/null)
+    local rc=$?
+    [ "$rc" -ne 0 ] && exit 0
 
-        local p_exec p_name p_prefix p_icon p_locale p_category
-        p_exec=$(printf '%s\n' "$form_out" | sed -n '1p')
-        p_name=$(printf '%s\n' "$form_out" | sed -n '2p')
-        p_prefix=$(printf '%s\n' "$form_out" | sed -n '3p')
-        p_icon=$(printf '%s\n' "$form_out" | sed -n '4p')
-        p_locale=$(printf '%s\n' "$form_out" | sed -n '5p')
-        p_category=$(printf '%s\n' "$form_out" | sed -n '6p')
+    local p_exec p_name p_prefix p_icon p_locale p_category
+    p_exec=$(printf '%s\n' "$form_out" | sed -n '1p')
+    p_name=$(printf '%s\n' "$form_out" | sed -n '2p')
+    p_prefix=$(printf '%s\n' "$form_out" | sed -n '3p')
+    p_icon=$(printf '%s\n' "$form_out" | sed -n '4p')
+    p_locale=$(printf '%s\n' "$form_out" | sed -n '5p')
+    p_category=$(printf '%s\n' "$form_out" | sed -n '6p')
 
-        if [ "$p_locale" = "$(msg locale_indefinite)" ]; then
-            p_locale=""
-        fi
+    if [ -z "$p_name" ]; then
+        p_name="$app_name"
+    fi
+    if [ "$p_locale" = "$(msg locale_indefinite)" ]; then
+        p_locale=""
+    fi
 
-        f_name="$p_name"
-        f_prefix="$p_prefix"
-        f_icon="$p_icon"
-        f_locale="$p_locale"
-        f_category="$p_category"
-
-        if [ -z "$p_name" ]; then
-            dlg_error "$APP_TITLE" "$(msg name_required)"
-            continue
-        fi
-
-        break
-    done
+    f_name="$p_name"
+    f_prefix="$p_prefix"
+    f_icon="$p_icon"
+    f_locale="$p_locale"
+    f_category="$p_category"
 
     local final_prefix="$f_prefix"
     if [ -z "$final_prefix" ]; then
